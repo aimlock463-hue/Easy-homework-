@@ -1,0 +1,7 @@
+{
+  "name": "Easy Homework",
+  "description": "An AI-powered homework assistant that helps students solve problems, write essays, and learn subjects with step-by-step explanations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
