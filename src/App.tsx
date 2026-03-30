@@ -37,7 +37,9 @@ import {
   onSnapshot, 
   handleFirestoreError, 
   OperationType,
-  User
+  User,
+  getDocs,
+  deleteDoc
 } from './firebase';
 
 // Error Boundary Component
@@ -201,11 +203,20 @@ export default function App() {
 
     try {
       const messagesRef = collection(db, 'users', user.uid, 'messages');
-      await addDoc(messagesRef, {
-        ...userMessage,
+      
+      // Clean up message data to avoid undefined fields which Firestore doesn't support
+      const messageData: any = {
+        role: userMessage.role,
+        text: userMessage.text,
         userId: user.uid,
+        subject: userMessage.subject,
         timestamp: serverTimestamp()
-      });
+      };
+      if (userMessage.image) {
+        messageData.image = userMessage.image;
+      }
+
+      await addDoc(messagesRef, messageData);
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
       
@@ -402,7 +413,16 @@ export default function App() {
         <button 
           onClick={async () => {
             if (!user) return;
-            // In a real app, you'd delete messages from Firestore
+            try {
+              const messagesRef = collection(db, 'users', user.uid, 'messages');
+              const q = query(messagesRef);
+              const snapshot = await getDocs(q);
+              const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+              await Promise.all(deletePromises);
+            } catch (error) {
+              console.error("Error clearing chat:", error);
+              handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/messages`);
+            }
           }}
           className="p-2.5 hover:bg-slate-800 rounded-2xl transition-colors active:scale-90 border border-transparent hover:border-slate-700"
           title="Clear Chat"
